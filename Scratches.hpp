@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <vector>
 
+
+
 bool sortcol( const std::vector<float>& v1, const std::vector<float>& v2 );
 bool sortcol2( const std::vector<float>& v1, const std::vector<float>& v2 ) ;
 float NFA( const std::vector<int> perfil, const std::vector<cv::Point> coordenadas, const int c, const int f, const cv::Mat  PM , const long long int  Ntests );
@@ -26,6 +28,10 @@ void MaximalMeaningfulScratchGrouping(std::vector<std::vector<float> > &Deteccio
 void Maximality(std::vector<std::vector<float> > &Detecciones, std::vector<std::vector<float> > &Detecciones_MAX);
 
 void PixelDensity(cv::Mat bin, cv::Mat &PM);
+
+void PixelDensity2(cv::Mat bin,cv::Mat &PM);
+
+void PixelDensity3(cv::Mat bin,cv::Mat &PM);
 
 void ExclusionPrinciple(const std::vector<std::vector<float> > Detecciones_MAX, std::vector<std::vector<float> > &Detecciones_EXC, const cv::Mat bin, const cv::Mat PM, const long long int  Ntests, const int largo_min );
 

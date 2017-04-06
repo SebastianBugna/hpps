@@ -262,6 +262,672 @@ void PixelDensity(cv::Mat bin,cv::Mat &PM){
 
 }
 
+void PixelDensity2(cv::Mat bin,cv::Mat &PM){
+
+//----------------GENERA MAPA DENSIDAD PIXELES IMAGEN -------------------------------
+    int nRows = bin.rows;
+    int nCols = bin.cols;
+    float largo_min = round(nRows/10); //largo minimo aceptado para un scratch
+
+    long long int Ntests = (long long int)nRows*nRows*nCols*40; //Numero de tests para metodo a contrario
+    //cout<< "pixels = "<< Ntests << endl;
+
+    //CV_8UC1
+    int L = (int)(nCols/30);
+    float max_density=0;
+    float density;
+    int lim_y, lim_x, cant_pixels;
+    float column_sum=0;
+
+    PM = Mat::zeros(nRows,nCols, CV_64FC1);
+    cv::Mat PM_aux=Mat::zeros(nRows-L,nCols, CV_64FC1);
+
+    for(int y = 0; y < nRows-L; ++y){
+        for ( int x = 0; x < nCols; ++x){
+
+            for (int i=0; i<L; i++){
+                column_sum+=(int)bin.at<uchar>(y+i,x)/255;
+            }
+            PM_aux.at<double>(y,x)=(double)column_sum;
+
+            column_sum=0;
+        }
+    }
+
+    for(int i = 0; i < nRows; ++i)
+        {
+            for ( int j = 0; j < nCols; ++j)
+            {
+              
+
+                //Cuadrante 1 ----------------------------------
+                density=0;
+
+                if ( (i-L+1<0) || (j-L+1<0 ) )  { // el cuadrado esta por fuera del borde
+
+                    lim_y=max(0,i-L+1);
+                    lim_x=max(0,j-L+1);
+                    
+                    cant_pixels=0;
+                    for (int y=lim_y;y<=i;y++){
+
+                        uchar *Pix = bin.ptr<uchar>(y);
+                        Pix +=j-L; //corrijo el puntero en la posicion x
+
+                        for (int x=lim_x; x<=j; x++){
+                            cant_pixels++;
+                            density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                            Pix++;
+                        }
+                    }
+                    density = density/cant_pixels;
+                    //cout<< "pixels = "<< cant_pixels << endl;
+                    //cout<< "density = "<< density << endl;
+                    max_density=density;
+
+                } else {
+
+                    double *Pix = PM_aux.ptr<double>(i-L);
+                    Pix+=j-L; // corrijo puntero
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix;//PM_aux.at<double>(i-L,j-L+x);
+                        Pix++;
+                    }
+                    density=density/(L*L);
+                    max_density=density;
+
+                }
+
+                
+                //Cuadrante 2 ----------------------------------
+                density=0;
+
+                if ( (i-L+1<0) || (j+L>nCols ) )  { // el cuadrado esta por fuera del borde
+
+                    lim_y=max(0,i-L+1);
+                    lim_x=min(nCols,j+L);
+                    cant_pixels=0;
+                    for (int y=lim_y;y<=i;y++){
+
+                        uchar *Pix = bin.ptr<uchar>(y);
+                        Pix +=j; //corrijo el puntero en la posicion x
+
+                        for (int x=j; x<=lim_x-1; x++){
+                            cant_pixels++;
+                            density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                            Pix++;
+                        }
+                    }
+                    density = density/cant_pixels;
+                    //cout<< "pixels = "<< cant_pixels << endl;
+                    //cout<< "density = "<< density << endl;
+                    max_density=max(max_density,density);
+
+                } else {
+
+                    double *Pix = PM_aux.ptr<double>(i-L);
+                    Pix+=j; // corrijo puntero
+
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix;//PM_aux.at<double>(i-L,j+x);
+                        Pix++;
+                    }
+                    density=density/(L*L);
+                    max_density=max(max_density,density);
+
+                }
+                
+                
+                //Cuadrante 3 ----------------------------------
+                density=0;
+
+                if ( (i+L>nRows) || (j+L>nCols ) )  { // el cuadrado esta por fuera del borde
+
+                    lim_y=min(nRows,i+L);
+                    lim_x=min(nCols,j+L);
+                    cant_pixels=0;
+                    for (int y=i;y<=lim_y-1;y++){
+
+                        uchar *Pix = bin.ptr<uchar>(y);
+                        Pix +=j; //corrijo el puntero en la posicion x
+
+                        for (int x=j; x<=lim_x-1; x++){
+                            cant_pixels++;
+                            density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                            Pix++;
+                        }
+                    }
+                    density = density/cant_pixels;
+                    //cout<< "pixels = "<< cant_pixels << endl;
+                    //cout<< "density = "<< density << endl;
+                    max_density=max(max_density,density);
+
+                } else {
+
+                    double *Pix = PM_aux.ptr<double>(i);
+                    Pix+=j; // corrijo puntero
+
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix;//PM_aux.at<double>(i,j+x);
+                        Pix++;
+                    }
+                    density=density/(L*L);
+                    max_density=max(max_density,density);
+
+                }
+
+                
+                //Cuadrante 4 ----------------------------------
+                density=0;
+
+                if ( (i+L>nRows) || (j-L+1<0 ) )  { // el cuadrado esta por fuera del borde
+
+                    lim_y=min(nRows,i+L);
+                    lim_x=max(0,j-L+1);
+                    cant_pixels=0;
+                    for (int y=i;y<=lim_y-1;y++){
+
+                        uchar *Pix = bin.ptr<uchar>(y);
+                        Pix +=j-L; //corrijo el puntero en la posicion x
+
+
+                        for (int x=lim_x; x<=j; x++){
+                            cant_pixels++;
+                            density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                            Pix++;
+                        }
+                    }
+                    density = density/cant_pixels;
+                    //cout<< "pixels = "<< cant_pixels << endl;
+                    //cout<< "density = "<< density << endl;
+                    max_density=max(max_density,density);
+
+                } else {
+
+                    double *Pix = PM_aux.ptr<double>(i);
+                    Pix+=j-L; // corrijo puntero
+
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix;//PM_aux.at<double>(i,j-L+x);
+                        Pix++;
+                    }
+                    density=density/(L*L);
+                    max_density=max(max_density,density);
+
+                }
+                
+
+                PM.at<double>(i,j)=(double)max_density;
+            }
+        }
+
+
+
+
+
+
+
+}
+
+void PixelDensity3(cv::Mat bin,cv::Mat &PM){
+//----------------GENERA MAPA DENSIDAD PIXELES IMAGEN -------------------------------
+    int nRows = bin.rows;
+    int nCols = bin.cols;
+    float largo_min = round(nRows/10); //largo minimo aceptado para un scratch
+
+    long long int Ntests = (long long int)nRows*nRows*nCols*40; //Numero de tests para metodo a contrario
+    //cout<< "pixels = "<< Ntests << endl;
+
+    //CV_8UC1
+    int L = (int)(nCols/30);
+    float max_density=0;
+    float density;
+    int lim_y, lim_x, cant_pixels;
+    float column_sum=0;
+
+    PM = Mat::zeros(nRows,nCols, CV_64FC1);
+    cv::Mat PM_aux=Mat::zeros(nRows-L,nCols, CV_64FC1);
+
+    for(int y = 0; y < nRows-L; ++y){
+        for ( int x = 0; x < nCols; ++x){
+
+            for (int i=0; i<L; i++){
+                column_sum+=(int)bin.at<uchar>(y+i,x)/255;
+            }
+            PM_aux.at<double>(y,x)=(double)column_sum;
+
+            column_sum=0;
+        }
+    }
+
+    //ESTRATEGIA DE BORDE
+    //BANDA INFERIOR
+    for(int i = 0; i < L; ++i){
+            for ( int j = 0; j < nCols; ++j){
+
+                //cuadrante1
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=max(0,j-L+1);
+
+                cant_pixels=0;
+                for (int y=lim_y;y<=i;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j-L; //corrijo el puntero en la posicion x
+
+                    for (int x=lim_x; x<=j; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=density;
+
+                //Cuadrante 2
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=lim_y;y<=i;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);   
+
+                //Cuadrante3
+                density=0;
+   
+                lim_y=min(nRows,i+L);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density); 
+
+                //Cuadrante 4 ----------------------------------
+                density=0;
+
+                lim_y=min(nRows,i+L);
+                lim_x=max(0,j-L+1);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j-L; //corrijo el puntero en la posicion x
+
+
+                    for (int x=lim_x; x<=j; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);
+
+                PM.at<double>(i,j)=(double)max_density;
+
+            }
+    }
+
+    //BANDA SUPERIOR
+    for(int i = nRows-L-1; i < nRows; ++i){
+            for ( int j = 0; j < nCols; ++j){
+
+                //cuadrante1
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=max(0,j-L+1);
+
+                cant_pixels=0;
+                    for (int y=lim_y;y<=i;y++){
+
+                        uchar *Pix = bin.ptr<uchar>(y);
+                        Pix +=j-L; //corrijo el puntero en la posicion x
+
+                        for (int x=lim_x; x<=j; x++){
+                            cant_pixels++;
+                            density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                            Pix++;
+                        }
+                    }
+                    density = density/cant_pixels;
+                    max_density=density;
+
+                //Cuadrante 2
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=lim_y;y<=i;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);   
+
+                //Cuadrante3
+                density=0;
+   
+                lim_y=min(nRows,i+L);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density); 
+
+                //Cuadrante 4 ----------------------------------
+                density=0;
+
+                lim_y=min(nRows,i+L);
+                lim_x=max(0,j-L+1);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j-L; //corrijo el puntero en la posicion x
+
+
+                    for (int x=lim_x; x<=j; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);
+
+                PM.at<double>(i,j)=(double)max_density;
+
+            }
+    }
+
+    //BANDA IZQ
+    for(int i = L; i < nRows-L-1; ++i){
+            for ( int j = 0; j < L; ++j){
+
+                //cuadrante1
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=max(0,j-L+1);
+
+                cant_pixels=0;
+                    for (int y=lim_y;y<=i;y++){
+
+                        uchar *Pix = bin.ptr<uchar>(y);
+                        Pix +=j-L; //corrijo el puntero en la posicion x
+
+                        for (int x=lim_x; x<=j; x++){
+                            cant_pixels++;
+                            density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                            Pix++;
+                        }
+                    }
+                    density = density/cant_pixels;
+                    max_density=density;
+
+                //Cuadrante 2
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=lim_y;y<=i;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);   
+
+                //Cuadrante3
+                density=0;
+   
+                lim_y=min(nRows,i+L);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density); 
+
+                //Cuadrante 4 ----------------------------------
+                density=0;
+
+                lim_y=min(nRows,i+L);
+                lim_x=max(0,j-L+1);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j-L; //corrijo el puntero en la posicion x
+
+
+                    for (int x=lim_x; x<=j; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);
+
+                PM.at<double>(i,j)=(double)max_density;
+
+            }
+    }
+
+    //BANDA DERECHA BORDE
+    for(int i = L; i < nRows-L-1; ++i){
+            for ( int j = nCols-L-1; j < nCols; ++j){
+
+                //cuadrante1
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=max(0,j-L+1);
+
+                cant_pixels=0;
+                    for (int y=lim_y;y<=i;y++){
+
+                        uchar *Pix = bin.ptr<uchar>(y);
+                        Pix +=j-L; //corrijo el puntero en la posicion x
+
+                        for (int x=lim_x; x<=j; x++){
+                            cant_pixels++;
+                            density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                            Pix++;
+                        }
+                    }
+                    density = density/cant_pixels;
+                    max_density=density;
+
+                //Cuadrante 2
+                density=0;
+                lim_y=max(0,i-L+1);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=lim_y;y<=i;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);   
+
+                //Cuadrante3
+                density=0;
+   
+                lim_y=min(nRows,i+L);
+                lim_x=min(nCols,j+L);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j; //corrijo el puntero en la posicion x
+
+                    for (int x=j; x<=lim_x-1; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density); 
+
+                //Cuadrante 4 ----------------------------------
+                density=0;
+
+                lim_y=min(nRows,i+L);
+                lim_x=max(0,j-L+1);
+                cant_pixels=0;
+                for (int y=i;y<=lim_y-1;y++){
+
+                    uchar *Pix = bin.ptr<uchar>(y);
+                    Pix +=j-L; //corrijo el puntero en la posicion x
+
+
+                    for (int x=lim_x; x<=j; x++){
+                        cant_pixels++;
+                        density += (int)*Pix/255;//(int)bin.at<uchar>(y,x)/255;
+                        Pix++;
+                    }
+                }
+                density = density/cant_pixels;
+                max_density=max(max_density,density);
+
+                PM.at<double>(i,j)=(double)max_density;
+
+            }
+    }
+
+    //REGION CON OPTIMIZACION
+    for(int i = L; i < nRows-L; ++i)
+        {
+            for ( int j = L; j < nCols-L; ++j)
+            {
+              
+                //Cuadrante 1 ----------------------------------
+                density=0;
+
+                    double *Pix = PM_aux.ptr<double>(i-L);
+                    Pix+=j-L; // corrijo puntero
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix;//PM_aux.at<double>(i-L,j-L+x);
+                        Pix++;
+                    }
+                    density=density/(L*L);
+                    max_density=density;
+
+                
+                //Cuadrante 2 ----------------------------------
+                density=0;
+
+                    double *Pix2 = PM_aux.ptr<double>(i-L);
+                    Pix2+=j; // corrijo puntero
+
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix2;//PM_aux.at<double>(i-L,j+x);
+                        Pix2++;
+                    }
+                    density=density/(L*L);
+                    max_density=max(max_density,density);
+
+            
+                //Cuadrante 3 ----------------------------------
+                density=0;
+
+                    double *Pix3 = PM_aux.ptr<double>(i);
+                    Pix3+=j; // corrijo puntero
+
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix3;//PM_aux.at<double>(i,j+x);
+                        Pix3++;
+                    }
+                    density=density/(L*L);
+                    max_density=max(max_density,density);
+  
+                //Cuadrante 4 ----------------------------------
+                density=0;
+
+                    double *Pix4 = PM_aux.ptr<double>(i);
+                    Pix4+=j-L; // corrijo puntero
+
+                    for (int x=0;x<=L;x++ ){
+                        density += *Pix4;//PM_aux.at<double>(i,j-L+x);
+                        Pix4++;
+                    }
+                    density=density/(L*L);
+                    max_density=max(max_density,density);
+
+                PM.at<double>(i,j)=(double)max_density;
+            }
+        }
+
+
+
+
+
+
+
+}
+
 void ExclusionPrinciple(const std::vector<std::vector<float> > Detecciones_MAX, std::vector<std::vector<float> > &Detecciones_EXC, const cv::Mat bin, const cv::Mat PM, const long long int  Ntests, const int largo_min ){
 
     sort(Detecciones_EXC.begin(), Detecciones_EXC.end(),sortcol2); //ORDENO NFA DESCENDENTE
@@ -682,6 +1348,8 @@ void MaximalMeaningfulScratchGrouping(vector<vector<float> > &Detecciones_MAX, c
 }
 
 void RemoveScratches(const cv::Mat src, cv::Mat &dst, bool detectionMap,  bool original,  bool restored, int thresholdHough, int inclination, int inpaintingRadius, int inpaintingMethod){
+//src matriz en RGB
+
 
 //const std::string &paramName
     int nRows = src.rows;
@@ -692,7 +1360,7 @@ void RemoveScratches(const cv::Mat src, cv::Mat &dst, bool detectionMap,  bool o
     BinaryDetection(src_bw,bin); //Deteccion binaria per-pixel
         
     Mat PM;
-    PixelDensity(bin,PM); //Calculo mapa densidad pixeles 
+    PixelDensity2(bin,PM); //Calculo mapa densidad pixeles 
 
     float largo_min = round(nRows/10); //largo minimo aceptado para un scratch
     long long int Ntests = (long long int)nRows*nRows*nCols*40; //Numero de tests para metodologia a contrario
